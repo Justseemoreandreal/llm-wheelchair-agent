@@ -1,0 +1,42 @@
+:root {
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: #e9f2ff;
+  background: #06101d;
+  font-synthesis: none;
+}
+* { box-sizing: border-box; }
+body { margin: 0; min-width: 320px; background: radial-gradient(circle at top, #102944 0, #06101d 45%); }
+button, input { font: inherit; }
+button { border: 1px solid #36536f; background: #11263a; color: #eef6ff; padding: 11px 14px; border-radius: 12px; }
+button:active { transform: translateY(1px); }
+button.primary { background: #2e7df6; border-color: #2e7df6; font-weight: 700; }
+.shell { width: min(920px, 100%); margin: 0 auto; padding: 18px 14px 48px; }
+header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 8px 2px 18px; }
+h1 { margin: 3px 0 0; font-size: clamp(24px, 6vw, 38px); }
+h2 { margin: 0 0 14px; font-size: 17px; }
+.eyebrow { color: #7da9d7; font-size: 11px; letter-spacing: .14em; }
+.mode { font-size: 11px; color: #ffce6a; border: 1px solid #6f5e35; border-radius: 999px; padding: 7px 10px; }
+.card { background: rgba(13, 30, 47, .88); border: 1px solid #203d58; border-radius: 18px; padding: 16px; margin-bottom: 14px; box-shadow: 0 12px 35px rgba(0,0,0,.18); }
+.hero { text-align: center; padding-block: 24px; }
+.mic { font-size: 48px; }
+.status { color: #74c0ff; font-size: 12px; margin: 8px 0; }
+.transcript { min-height: 52px; font-size: 20px; font-weight: 650; display: grid; place-items: center; }
+.row { display: flex; gap: 9px; justify-content: center; flex-wrap: wrap; }
+.chips { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+form { display: flex; gap: 8px; }
+input { flex: 1; min-width: 0; border-radius: 12px; border: 1px solid #36536f; background: #071724; color: white; padding: 12px 13px; }
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.grid .card { margin: 0 0 14px; }
+dl { display: grid; grid-template-columns: 90px 1fr; gap: 9px; margin: 0; font-size: 14px; }
+dt { color: #829cb5; }
+dd { margin: 0; overflow-wrap: anywhere; }
+.danger { color: #ff6b6b; font-weight: 800; }
+.note { color: #ffcf70; font-size: 12px; margin: 14px 0 0; }
+pre { overflow-x: auto; white-space: pre-wrap; overflow-wrap: anywhere; background: #06101a; padding: 12px; border-radius: 12px; color: #b9d9fa; font-size: 12px; }
+ul { padding-left: 20px; color: #c6d8e9; }
+@media (max-width: 620px) {
+  .grid { grid-template-columns: 1fr; gap: 0; }
+  header { align-items: flex-start; }
+  form { flex-direction: column; }
+  button { min-height: 44px; }
+}

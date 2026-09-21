@@ -1,0 +1,34 @@
+{
+  "stage": "DemoV0",
+  "status": "accepted_for_simulated_demo_only_not_for_physical_wheelchair",
+  "branch": "demo/mobile-voice-v0",
+  "commit": "8fd8f0fdd9a735980abddbf49abc4f71e58681bc",
+  "frozen_commit_note": "Demo functionality was revalidated at this commit before the documentation-only feedback commit.",
+  "frontend_build": "PASS (tsc -b and Vite build)",
+  "frontend_tests": {
+    "passed": 39,
+    "failed": 0
+  },
+  "backend_tests": {
+    "passed": 4,
+    "failed": 0
+  },
+  "p0_backend_offline_test": "PASS: browser offline smoke executed after FastAPI was stopped; simulation P0 received SUCCESS and MOTOR=LOCKED;BRAKE=ENGAGED.",
+  "mobile_real_device_test": "NOT TESTED: no physical phone was used.",
+  "voice_test": "NOT TESTED on a real microphone/device; code/unit lifecycle coverage and text-control browser smoke passed.",
+  "websocket_gateway": "PASS in simulated gateway mode: canonical P0 command received simulated LOCKED/ENGAGED ACK.",
+  "llm_status": "No cloud LLM. FastAPI MockPlanner plus explicit frontend FallbackPlanner.",
+  "hardware_status": "MockHardwareAdapter and in-memory SimulatedController only; no physical motor, brake, e-stop, CAN, serial, ROS2, or hardware protocol.",
+  "critical_issues": [],
+  "high_issues": [
+    "H-01: no independent physical emergency-stop or real actuation path; blocks hardware use.",
+    "H-02: WebSocket gateway lacks authentication, TLS/trust boundary, and server-side P0 latch; blocks hardware use."
+  ],
+  "next_stage_dependencies": [
+    "Approved hardware protocol and safety-state-machine specification before any physical adapter.",
+    "Independent physical emergency-stop and hardware-in-the-loop test setup before physical control.",
+    "Real Android/iOS device testing before claiming mobile voice support.",
+    "HTTPS hosting credentials if mobile microphone deployment is selected.",
+    "Approved API key/provider policy if cloud LLM is selected."
+  ]
+}

@@ -1,9 +1,19 @@
 import type { ControlAck, ControlCommand } from "./types";
 
 export interface HardwareAdapter {
-  readonly mode: "SIMULATION" | "HARDWARE";
+  readonly mode: "SIMULATION" | "NETWORK_GATEWAY";
   send(command: ControlCommand): Promise<ControlAck>;
 }
+
+interface WebSocketLike {
+  onopen: (() => void) | null;
+  onerror: (() => void) | null;
+  onmessage: ((event: { data: any }) => void) | null;
+  send(data: string): void;
+  close(): void;
+}
+
+type WebSocketFactory = (url: string) => WebSocketLike;
 
 export class MockHardwareAdapter implements HardwareAdapter {
   readonly mode = "SIMULATION" as const;
@@ -41,25 +51,28 @@ export class MockHardwareAdapter implements HardwareAdapter {
 }
 
 export class WebSocketHardwareAdapter implements HardwareAdapter {
-  readonly mode = "HARDWARE" as const;
-  constructor(private url: string) {}
+  readonly mode = "NETWORK_GATEWAY" as const;
+  constructor(
+    private url: string,
+    private createSocket: WebSocketFactory = (socketUrl) => new WebSocket(socketUrl) as WebSocketLike
+  ) {}
 
   send(command: ControlCommand): Promise<ControlAck> {
     const started = performance.now();
     return new Promise((resolve, reject) => {
-      const ws = new WebSocket(this.url);
-      const timeout = window.setTimeout(() => {
+      const ws = this.createSocket(this.url);
+      const timeout = globalThis.setTimeout(() => {
         ws.close();
         reject(new Error("hardware gateway ACK timeout"));
       }, 1500);
 
       ws.onopen = () => ws.send(JSON.stringify(command));
       ws.onerror = () => {
-        window.clearTimeout(timeout);
+        globalThis.clearTimeout(timeout);
         reject(new Error("hardware gateway connection failed"));
       };
       ws.onmessage = (event) => {
-        window.clearTimeout(timeout);
+        globalThis.clearTimeout(timeout);
         try {
           const ack = JSON.parse(String(event.data)) as ControlAck;
           ack.ack_latency_ms = Number((performance.now() - started).toFixed(3));

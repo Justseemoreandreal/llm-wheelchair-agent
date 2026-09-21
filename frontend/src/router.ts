@@ -20,6 +20,11 @@ export class SafetyRouter {
     });
   }
 
+  recognizes(text: string): boolean {
+    const normalized = text.replace(/\s+/g, "");
+    return normalized.length > 0 && this.entries.some((entry) => normalized.includes(entry.word));
+  }
+
   route(text: string, sessionId: string, source: ControlCommand["source"] = "voice_local_rule"): RouteResult | null {
     const started = performance.now();
     const normalized = text.replace(/\s+/g, "");
@@ -29,7 +34,9 @@ export class SafetyRouter {
     if (!match) return null;
 
     const now = Date.now();
-    const fingerprint = `${match.priority}:${match.action}:${match.word}`;
+    // ASR often grows one interim phrase ("停" -> "停下"). Treat the same
+    // priority/action as one command even when the matched word becomes longer.
+    const fingerprint = `${match.priority}:${match.action}`;
 
     // Prevent repeated interim transcript fragments from hammering the controller.
     if (fingerprint === this.lastFingerprint && now - this.lastAt < 900) {

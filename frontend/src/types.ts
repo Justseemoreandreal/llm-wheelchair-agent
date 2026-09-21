@@ -39,3 +39,16 @@ export interface RouteResult {
   command: ControlCommand;
   local: boolean;
 }
+
+export interface PlanStep {
+  action: string;
+  parameters?: Record<string, unknown>;
+}
+
+export interface PlannerResult {
+  mode: "mock" | "mock/fallback";
+  intent: string;
+  steps: PlanStep[];
+  requires_confirmation: boolean;
+  message: string;
+}

@@ -1,0 +1,229 @@
+{
+  "version": "0.1",
+  "lexicon": [
+    {
+      "word": "前进",
+      "type": "move_control",
+      "priority": "P2",
+      "action": "move_forward",
+      "owner": "offline"
+    },
+    {
+      "word": "后退",
+      "type": "move_control",
+      "priority": "P2",
+      "action": "move_backward",
+      "owner": "offline"
+    },
+    {
+      "word": "向左",
+      "type": "move_control",
+      "priority": "P2",
+      "action": "turn_left",
+      "owner": "offline"
+    },
+    {
+      "word": "向右",
+      "type": "move_control",
+      "priority": "P2",
+      "action": "turn_right",
+      "owner": "offline"
+    },
+    {
+      "word": "直行",
+      "type": "move_control",
+      "priority": "P2",
+      "action": "go_straight",
+      "owner": "offline"
+    },
+    {
+      "word": "调头",
+      "type": "move_control",
+      "priority": "P2",
+      "action": "turn_around",
+      "owner": "offline"
+    },
+    {
+      "word": "加速",
+      "type": "move_control",
+      "priority": "P2",
+      "action": "speed_up",
+      "owner": "offline"
+    },
+    {
+      "word": "减速",
+      "type": "move_control",
+      "priority": "P2",
+      "action": "slow_down",
+      "owner": "offline"
+    },
+    {
+      "word": "快一点",
+      "type": "move_control",
+      "priority": "P2",
+      "action": "speed_up",
+      "owner": "offline"
+    },
+    {
+      "word": "慢一点",
+      "type": "move_control",
+      "priority": "P2",
+      "action": "slow_down",
+      "owner": "offline"
+    },
+    {
+      "word": "到客厅去",
+      "type": "navigation",
+      "priority": "P2",
+      "action": "navigate_living_room",
+      "owner": "offline"
+    },
+    {
+      "word": "到门口去",
+      "type": "navigation",
+      "priority": "P2",
+      "action": "navigate_door",
+      "owner": "offline"
+    },
+    {
+      "word": "去茶几那边",
+      "type": "navigation",
+      "priority": "P2",
+      "action": "navigate_target",
+      "owner": "llm"
+    },
+    {
+      "word": "开到我旁边来",
+      "type": "navigation",
+      "priority": "P2",
+      "action": "navigate_to_user",
+      "owner": "llm"
+    },
+    {
+      "word": "我刚才让你去的地方",
+      "type": "navigation",
+      "priority": "P2",
+      "action": "navigate_context_target",
+      "owner": "llm"
+    },
+    {
+      "word": "开门",
+      "type": "switch_control",
+      "priority": "P2",
+      "action": "open_door",
+      "owner": "offline"
+    },
+    {
+      "word": "关门",
+      "type": "switch_control",
+      "priority": "P2",
+      "action": "close_door",
+      "owner": "offline"
+    },
+    {
+      "word": "开灯",
+      "type": "switch_control",
+      "priority": "P2",
+      "action": "light_on",
+      "owner": "offline"
+    },
+    {
+      "word": "关灯",
+      "type": "switch_control",
+      "priority": "P2",
+      "action": "light_off",
+      "owner": "offline"
+    },
+    {
+      "word": "拿水杯",
+      "type": "grasp_task",
+      "priority": "P2",
+      "action": "grasp_cup",
+      "owner": "offline"
+    },
+    {
+      "word": "把水杯拿过来",
+      "type": "grasp_task",
+      "priority": "P2",
+      "action": "grasp_move_cup",
+      "owner": "llm"
+    },
+    {
+      "word": "捡起地上的东西",
+      "type": "grasp_task",
+      "priority": "P2",
+      "action": "grasp_floor_object",
+      "owner": "llm"
+    },
+    {
+      "word": "把书放到桌上",
+      "type": "grasp_task",
+      "priority": "P2",
+      "action": "place_book_on_table",
+      "owner": "llm"
+    },
+    {
+      "word": "再拿一个",
+      "type": "grasp_task",
+      "priority": "P2",
+      "action": "repeat_last_grasp",
+      "owner": "llm"
+    },
+    {
+      "word": "帮我把灯调亮一点",
+      "type": "switch_control",
+      "priority": "P2",
+      "action": "adjust_light_brighter",
+      "owner": "llm"
+    },
+    {
+      "word": "几点了",
+      "type": "status_query",
+      "priority": "P3",
+      "action": "query_time",
+      "owner": "llm"
+    },
+    {
+      "word": "今天天气",
+      "type": "status_query",
+      "priority": "P3",
+      "action": "query_weather",
+      "owner": "llm"
+    },
+    {
+      "word": "还有多少电",
+      "type": "status_query",
+      "priority": "P3",
+      "action": "query_battery",
+      "owner": "llm"
+    },
+    {
+      "word": "电量是多少",
+      "type": "status_query",
+      "priority": "P3",
+      "action": "query_battery",
+      "owner": "llm"
+    },
+    {
+      "word": "走了多远",
+      "type": "status_query",
+      "priority": "P3",
+      "action": "query_distance",
+      "owner": "llm"
+    },
+    {
+      "word": "现在什么情况",
+      "type": "status_query",
+      "priority": "P3",
+      "action": "query_system_status",
+      "owner": "llm"
+    },
+    {
+      "word": "帮我查下电池",
+      "type": "status_query",
+      "priority": "P3",
+      "action": "query_battery",
+      "owner": "llm"
+    }
+  ]
+}

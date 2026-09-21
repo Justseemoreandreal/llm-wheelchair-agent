@@ -1,0 +1,202 @@
+{
+  "version": "0.1",
+  "policy": "P0/P1 safety commands execute locally first; LLM notification is asynchronous and must never block local safety action.",
+  "lexicon": [
+    {
+      "word": "停",
+      "type": "emergency_stop",
+      "priority": "P0",
+      "action": "immediate_stop",
+      "owner": "both"
+    },
+    {
+      "word": "停止",
+      "type": "emergency_stop",
+      "priority": "P0",
+      "action": "immediate_stop",
+      "owner": "both"
+    },
+    {
+      "word": "停下",
+      "type": "emergency_stop",
+      "priority": "P0",
+      "action": "immediate_stop",
+      "owner": "both"
+    },
+    {
+      "word": "停车",
+      "type": "emergency_stop",
+      "priority": "P0",
+      "action": "immediate_stop",
+      "owner": "both"
+    },
+    {
+      "word": "站住",
+      "type": "emergency_stop",
+      "priority": "P0",
+      "action": "immediate_stop",
+      "owner": "both"
+    },
+    {
+      "word": "别动",
+      "type": "emergency_stop",
+      "priority": "P0",
+      "action": "immediate_stop",
+      "owner": "both"
+    },
+    {
+      "word": "刹住",
+      "type": "emergency_stop",
+      "priority": "P0",
+      "action": "brake_now",
+      "owner": "both"
+    },
+    {
+      "word": "刹车",
+      "type": "emergency_stop",
+      "priority": "P0",
+      "action": "brake_now",
+      "owner": "both"
+    },
+    {
+      "word": "急停",
+      "type": "emergency_stop",
+      "priority": "P0",
+      "action": "hardware_estop",
+      "owner": "offline"
+    },
+    {
+      "word": "快停",
+      "type": "emergency_stop",
+      "priority": "P0",
+      "action": "immediate_stop",
+      "owner": "offline"
+    },
+    {
+      "word": "立马停",
+      "type": "emergency_stop",
+      "priority": "P0",
+      "action": "immediate_stop",
+      "owner": "offline"
+    },
+    {
+      "word": "马上停",
+      "type": "emergency_stop",
+      "priority": "P0",
+      "action": "immediate_stop",
+      "owner": "offline"
+    },
+    {
+      "word": "立刻停下",
+      "type": "emergency_stop",
+      "priority": "P0",
+      "action": "immediate_stop",
+      "owner": "offline"
+    },
+    {
+      "word": "现在就停",
+      "type": "emergency_stop",
+      "priority": "P0",
+      "action": "immediate_stop",
+      "owner": "offline"
+    },
+    {
+      "word": "停下来别动了",
+      "type": "emergency_stop",
+      "priority": "P0",
+      "action": "immediate_stop",
+      "owner": "llm"
+    },
+    {
+      "word": "危险",
+      "type": "danger_warn",
+      "priority": "P1",
+      "action": "slow_stop_alert",
+      "owner": "both"
+    },
+    {
+      "word": "小心",
+      "type": "danger_warn",
+      "priority": "P1",
+      "action": "slow_alert",
+      "owner": "both"
+    },
+    {
+      "word": "注意",
+      "type": "danger_warn",
+      "priority": "P1",
+      "action": "slow_alert",
+      "owner": "both"
+    },
+    {
+      "word": "快让开",
+      "type": "danger_warn",
+      "priority": "P1",
+      "action": "avoid_or_reverse",
+      "owner": "offline"
+    },
+    {
+      "word": "闪开",
+      "type": "danger_warn",
+      "priority": "P1",
+      "action": "avoid_or_reverse",
+      "owner": "offline"
+    },
+    {
+      "word": "躲开",
+      "type": "danger_warn",
+      "priority": "P1",
+      "action": "avoid_or_reverse",
+      "owner": "offline"
+    },
+    {
+      "word": "有障碍",
+      "type": "danger_warn",
+      "priority": "P1",
+      "action": "stop_and_confirm_reroute",
+      "owner": "llm"
+    },
+    {
+      "word": "前面有东西",
+      "type": "danger_warn",
+      "priority": "P1",
+      "action": "stop_and_confirm",
+      "owner": "llm"
+    },
+    {
+      "word": "后面有人",
+      "type": "danger_warn",
+      "priority": "P1",
+      "action": "stop_and_confirm",
+      "owner": "llm"
+    },
+    {
+      "word": "快躲开点",
+      "type": "danger_warn",
+      "priority": "P1",
+      "action": "avoid_now",
+      "owner": "offline"
+    },
+    {
+      "word": "救命",
+      "type": "emergency_help",
+      "priority": "P0",
+      "action": "stop_and_help_call",
+      "owner": "both"
+    },
+    {
+      "word": "帮帮我",
+      "type": "emergency_help",
+      "priority": "P0",
+      "action": "stop_and_ask_help",
+      "owner": "both"
+    },
+    {
+      "word": "快来人",
+      "type": "emergency_help",
+      "priority": "P0",
+      "action": "help_call",
+      "owner": "both"
+    }
+  ]
+}

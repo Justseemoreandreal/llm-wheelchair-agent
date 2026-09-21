@@ -13,6 +13,7 @@ const entries = [
 ];
 
 const sessionId = crypto.randomUUID?.() ?? "demo-session";
+const apiBase = import.meta.env.VITE_API_BASE_URL ?? `${window.location.protocol}//${window.location.hostname}:8000`;
 
 export default function App() {
   const router = useMemo(() => new SafetyRouter(entries), []);
@@ -50,7 +51,7 @@ export default function App() {
     // Complex/unknown instructions go to the backend planner.
     try {
       setBackend("PLANNING");
-      const response = await fetch("http://localhost:8000/api/intent", {
+      const response = await fetch(`${apiBase}/api/intent`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

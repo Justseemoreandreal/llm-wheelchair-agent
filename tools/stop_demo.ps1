@@ -46,6 +46,8 @@ if (Test-Path -LiteralPath $runtimeDir) {
     Stop-RecordedProcess -PidFile (Join-Path $runtimeDir "server.pid") -Label "Demo server"
     Remove-Item -LiteralPath (Join-Path $runtimeDir "access_token.txt") -Force -ErrorAction SilentlyContinue
     Remove-Item -LiteralPath (Join-Path $runtimeDir "phone_url.txt") -Force -ErrorAction SilentlyContinue
+    Remove-Item -LiteralPath (Join-Path $runtimeDir "local_url.txt") -Force -ErrorAction SilentlyContinue
+    Remove-Item -LiteralPath (Join-Path $runtimeDir "server_port.txt") -Force -ErrorAction SilentlyContinue
 }
 
 if (-not $Quiet) { Write-Host "Project-owned Demo V0.1 processes are stopped." -ForegroundColor Green }

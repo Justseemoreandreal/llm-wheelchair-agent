@@ -17,7 +17,6 @@ $serverOutLog = Join-Path $logsDir "server.out.log"
 $serverErrLog = Join-Path $logsDir "server.err.log"
 $tunnelOutLog = Join-Path $logsDir "tunnel.out.log"
 $tunnelErrLog = Join-Path $logsDir "tunnel.err.log"
-$localUrl = "http://127.0.0.1:8765/"
 
 New-Item -ItemType Directory -Force -Path $logsDir, $toolsCache | Out-Null
 Set-Content -LiteralPath $launcherLog -Value "$(Get-Date -Format o) Demo V0.1 launcher started. PhoneMode=$PhoneMode"
@@ -33,6 +32,39 @@ function Require-Command {
     if (-not (Get-Command $Name -ErrorAction SilentlyContinue)) {
         throw "Missing '$Name'. $InstallHint"
     }
+}
+
+function Test-LocalPortBindable {
+    param([Parameter(Mandatory = $true)][int]$Port)
+    $listener = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Loopback, $Port)
+    try {
+        $listener.Start()
+        return $true
+    } catch {
+        return $false
+    } finally {
+        try { $listener.Stop() } catch {}
+    }
+}
+
+function Get-DemoPort {
+    # Prefer the documented port, but Windows may reserve/exclude it (WinError 10013).
+    if (Test-LocalPortBindable -Port 8765) { return 8765 }
+
+    Write-Status "Port 8765 is unavailable or reserved. Selecting a safe free port automatically..." Yellow
+    for ($attempt = 0; $attempt -lt 10; $attempt++) {
+        $listener = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Loopback, 0)
+        try {
+            $listener.Start()
+            $candidate = ([System.Net.IPEndPoint]$listener.LocalEndpoint).Port
+        } finally {
+            try { $listener.Stop() } catch {}
+        }
+        if ($candidate -gt 0 -and (Test-LocalPortBindable -Port $candidate)) {
+            return $candidate
+        }
+    }
+    throw "Could not find a bindable local TCP port for the demo."
 }
 
 function Get-Sha256 {
@@ -51,16 +83,20 @@ function Get-Sha256 {
 }
 
 function Wait-ForHealth {
-    param([int]$TimeoutSeconds = 45)
+    param(
+        [Parameter(Mandatory = $true)][string]$BaseUrl,
+        [int]$TimeoutSeconds = 45
+    )
+    $healthUrl = "$($BaseUrl.TrimEnd('/'))/health"
     $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
     do {
         try {
-            $response = Invoke-RestMethod -Uri "http://127.0.0.1:8765/health" -TimeoutSec 2
+            $response = Invoke-RestMethod -Uri $healthUrl -TimeoutSec 2
             if ($response.status -eq "ok") { return }
         } catch {}
         Start-Sleep -Milliseconds 500
     } while ((Get-Date) -lt $deadline)
-    throw "FastAPI did not become healthy. See $serverErrLog"
+    throw "FastAPI did not become healthy at $healthUrl. See $serverErrLog"
 }
 
 function Wait-ForTunnelUrl {
@@ -138,13 +174,19 @@ try {
         Remove-Item Env:DEMO_ACCESS_TOKEN -ErrorAction SilentlyContinue
     }
 
-    Write-Status "Starting unified FastAPI + React server..." Cyan
+    $serverPort = Get-DemoPort
+    $localOrigin = "http://127.0.0.1:$serverPort"
+    $localUrl = "$localOrigin/"
+    Set-Content -LiteralPath (Join-Path $runtimeDir "server_port.txt") -Value $serverPort
+    Set-Content -LiteralPath (Join-Path $runtimeDir "local_url.txt") -Value $localUrl
+
+    Write-Status "Starting unified FastAPI + React server on port $serverPort..." Cyan
     $server = Start-Process -FilePath $venvPython `
-        -ArgumentList @("-m", "uvicorn", "app.main:app", "--host", "127.0.0.1", "--port", "8765") `
+        -ArgumentList @("-m", "uvicorn", "app.main:app", "--host", "127.0.0.1", "--port", "$serverPort") `
         -WorkingDirectory $backendDir -RedirectStandardOutput $serverOutLog `
         -RedirectStandardError $serverErrLog -WindowStyle Hidden -PassThru
     Set-Content -LiteralPath (Join-Path $runtimeDir "server.pid") -Value $server.Id
-    Wait-ForHealth
+    Wait-ForHealth -BaseUrl $localOrigin
     Write-Status "Local demo is ready: $localUrl" Green
 
     $entryUrl = $localUrl
@@ -170,7 +212,7 @@ try {
         Remove-Item -LiteralPath $tunnelOutLog, $tunnelErrLog -Force -ErrorAction SilentlyContinue
         Write-Status "Creating temporary HTTPS tunnel (no account required)..." Cyan
         $tunnel = Start-Process -FilePath $cloudflared `
-            -ArgumentList @("tunnel", "--url", "http://127.0.0.1:8765", "--no-autoupdate") `
+            -ArgumentList @("tunnel", "--url", $localOrigin, "--no-autoupdate") `
             -WorkingDirectory $repoRoot -RedirectStandardOutput $tunnelOutLog `
             -RedirectStandardError $tunnelErrLog -WindowStyle Hidden -PassThru
         Set-Content -LiteralPath (Join-Path $runtimeDir "tunnel.pid") -Value $tunnel.Id

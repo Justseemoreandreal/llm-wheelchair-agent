@@ -1,12 +1,19 @@
 from __future__ import annotations
 
+import ipaddress
+import os
+import secrets
 import time
 from collections import deque
+from pathlib import Path
 from typing import Any, Literal
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, Field, ValidationError
+
+FRONTEND_DIST = Path(__file__).resolve().parents[2] / "frontend" / "dist"
 
 app = FastAPI(title="LLM Wheelchair Demo API", version="0.0.1")
 app.add_middleware(
@@ -16,6 +23,62 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+def _configured_token() -> str:
+    return os.getenv("DEMO_ACCESS_TOKEN", "").strip()
+
+
+def _is_loopback(host: str | None) -> bool:
+    if not host:
+        return False
+    try:
+        return ipaddress.ip_address(host).is_loopback
+    except ValueError:
+        return host.lower() == "localhost"
+
+
+def _request_host(request: Request) -> str | None:
+    return request.headers.get("cf-connecting-ip") or (
+        request.client.host if request.client else None
+    )
+
+
+def _valid_token(supplied: str | None) -> bool:
+    expected = _configured_token()
+    if not expected:
+        return True
+    return bool(supplied) and secrets.compare_digest(supplied, expected)
+
+
+@app.middleware("http")
+async def demo_access_gate(request: Request, call_next):
+    expected = _configured_token()
+    if not expected or _is_loopback(_request_host(request)) or request.url.path == "/health":
+        return await call_next(request)
+
+    supplied = (
+        request.query_params.get("access_token")
+        or request.headers.get("x-demo-token")
+        or request.cookies.get("demo_access_token")
+    )
+    if not _valid_token(supplied):
+        return JSONResponse(
+            {"detail": "A valid temporary demo access token is required."},
+            status_code=401,
+        )
+
+    response = await call_next(request)
+    if request.query_params.get("access_token"):
+        forwarded_proto = request.headers.get("x-forwarded-proto", request.url.scheme)
+        response.set_cookie(
+            "demo_access_token",
+            supplied,
+            httponly=True,
+            secure=forwarded_proto == "https",
+            samesite="lax",
+        )
+    return response
 
 
 class IntentRequest(BaseModel):
@@ -68,6 +131,7 @@ class SimulatedController:
     def __init__(self) -> None:
         self.motor = "IDLE"
         self.brake = "RELEASED"
+        self.safety_latched = False
         self.events: deque[dict[str, Any]] = deque(maxlen=50)
 
     @property
@@ -78,6 +142,17 @@ class SimulatedController:
         if command.priority == "P0":
             self.motor = "LOCKED"
             self.brake = "ENGAGED"
+            self.safety_latched = True
+        elif self.safety_latched and command.priority == "P2" and self._is_motion(command.action):
+            ack = ControlAck(
+                command_id=command.command_id,
+                accepted=False,
+                controller_state=self.state,
+                timestamp_ms=int(time.time() * 1000),
+                message="Rejected by simulated server P0 safety latch; explicit reset required.",
+            )
+            self.events.append({"command": command.model_dump(), "ack": ack.model_dump()})
+            return ack
         elif command.action == "move_forward":
             self.motor = "FORWARD"
             self.brake = "RELEASED"
@@ -99,6 +174,21 @@ class SimulatedController:
             {"command": command.model_dump(), "ack": ack.model_dump()}
         )
         return ack
+
+    @staticmethod
+    def _is_motion(action: str) -> bool:
+        return action.startswith(("move_", "turn_", "navigate_", "speed_", "go_"))
+
+    def reset(self) -> dict[str, Any]:
+        self.motor = "IDLE"
+        self.brake = "RELEASED"
+        self.safety_latched = False
+        return {
+            "accepted": True,
+            "safety_latched": False,
+            "controller_state": self.state,
+            "message": "Simulated controller reset; no physical hardware was controlled.",
+        }
 
 
 controller = SimulatedController()
@@ -165,13 +255,27 @@ def control_state() -> dict[str, Any]:
         "motor": controller.motor,
         "brake": controller.brake,
         "controller_state": controller.state,
+        "safety_latched": controller.safety_latched,
         "events": list(controller.events),
         "warning": "Simulated controller only; no physical wheelchair was controlled.",
     }
 
 
+@app.post("/api/control/reset")
+def reset_control() -> dict[str, Any]:
+    return controller.reset()
+
+
 @app.websocket("/ws/control")
 async def control_gateway(websocket: WebSocket) -> None:
+    client_host = websocket.headers.get("cf-connecting-ip") or (
+        websocket.client.host if websocket.client else None
+    )
+    if _configured_token() and not _is_loopback(client_host):
+        supplied = websocket.query_params.get("access_token") or websocket.headers.get("x-demo-token")
+        if not _valid_token(supplied):
+            await websocket.close(code=4401, reason="Temporary demo access token required")
+            return
     await websocket.accept()
     try:
         while True:
@@ -191,3 +295,18 @@ async def control_gateway(websocket: WebSocket) -> None:
                 await websocket.send_json(ack.model_dump())
     except WebSocketDisconnect:
         return
+
+
+@app.get("/{full_path:path}", include_in_schema=False)
+def unified_frontend(full_path: str) -> FileResponse:
+    index = FRONTEND_DIST / "index.html"
+    candidate = (FRONTEND_DIST / full_path).resolve()
+    dist_root = FRONTEND_DIST.resolve()
+    if full_path and candidate.is_relative_to(dist_root) and candidate.is_file():
+        return FileResponse(candidate)
+    if index.is_file():
+        return FileResponse(index)
+    raise HTTPException(
+        status_code=404,
+        detail="Frontend build not found. Run npm run build in frontend/.",
+    )

@@ -27,6 +27,16 @@ describe("MockHardwareAdapter", () => {
     expect(ack.accepted).toBe(true);
     expect(ack.controller_state).toBe("MOTOR=LOCKED;BRAKE=ENGAGED");
   });
+
+  it("requires an explicit reset before returning to the idle simulation state", async () => {
+    const adapter = new MockHardwareAdapter();
+    await adapter.send(stopCommand);
+    const reset = await adapter.reset();
+    expect(adapter.motorState).toBe("IDLE");
+    expect(adapter.brakeState).toBe("RELEASED");
+    expect(reset.controller_state).toBe("MOTOR=IDLE;BRAKE=RELEASED");
+    expect(reset.accepted).toBe(true);
+  });
 });
 
 describe("WebSocketHardwareAdapter", () => {

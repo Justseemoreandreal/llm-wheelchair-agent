@@ -1,19 +1,50 @@
-# 智能轮椅语音安全控制 Demo V0
+# 智能轮椅语音安全控制 Demo V0.1
 
-这是一个手机优先的可运行演示：语音、文字或测试按钮进入本地安全路由；P0 急停不等待 Backend 或 LLM，直接生成标准控制 JSON 并交给模拟控制器。复杂自然语言进入 FastAPI `MockPlanner`，Backend 离线时自动使用前端 `FallbackPlanner`。
+这是一个手机优先的模拟软件 Demo。语音、文字或测试按钮进入本地安全路由；P0 急停不等待 Backend Planner 或 LLM，直接生成标准控制 JSON。复杂自然语言使用 `MockPlanner`，不可用时自动切换到前端 `FallbackPlanner`。
 
 > **安全声明：** 当前两个控制模式都是模拟控制器，不代表物理轮椅已经执行。软件语音停止不能替代独立物理急停。项目尚未包含 ESP32、STM32、CAN、UART 或 ROS 2 的真实底层协议。
 
-## Windows PowerShell：直接运行
+## 最简单运行方式（Windows）
 
-需要先安装 Git、Node.js 20 或更高版本、Python 3.11 或更高版本。
+首次运行前只需安装 Node.js 20+ 和 Python 3.11+，安装时允许加入 PATH。
+
+1. 双击仓库根目录的 `START_DEMO.bat`。
+2. 等待自动准备环境并打开浏览器。
+3. 体验结束后回到启动窗口，按 Enter；服务会自动关闭。
+
+电脑固定地址：<http://127.0.0.1:8765/>
+
+## 手机 HTTPS 体验
+
+1. 双击 `START_PHONE_DEMO.bat`。
+2. 首次运行会自动下载官方 `cloudflared`，请耐心等待。
+3. 启动窗口会显示临时 HTTPS 地址，并打开本地二维码图片。
+4. 手机扫码，允许麦克风权限，按页面“手机验收模式”逐项测试。
+5. 用完回到电脑按 Enter；本地服务、临时 Tunnel 和本次 Token 会一起失效。
+
+此方式不需要 Cloudflare 账号。临时链接每次启动都会变化，仅用于短时演示。Codex 无法代替用户操作真实手机，因此发布状态为 **REAL PHONE: USER TEST REQUIRED**。
+
+如果启动窗口异常关闭，可双击 `STOP_DEMO.bat`。它只清理当前项目记录的进程，不会按进程名批量结束其他 Python、Node 或 cloudflared。
+
+## 页面验收顺序
+
+1. 确认页面显示 `SIMULATION ONLY`，手机模式显示 `NETWORK GATEWAY`。
+2. 说或点击“停下”：应得到 `P0`、`MOTOR=LOCKED;BRAKE=ENGAGED`。
+3. 立即点击“前进”：浏览器短锁存会阻止命令；服务端锁存也会拒绝未复位的运动命令。
+4. 点击“复位模拟控制器”，再点“前进”：模拟运动才恢复。
+5. 点击“测试复杂指令 Fallback”，确认标记为 `MOCK / FALLBACK`。
+6. 可复制或导出页面里的验收 JSON。
+
+## Windows PowerShell：开发者运行方式
+
+以下双终端方式仅用于开发；普通体验请使用上面的 `.bat`。
 
 ### Terminal 1：启动 Backend
 
 在仓库根目录打开 PowerShell：
 
 ```powershell
-git checkout demo/mobile-voice-v0
+git checkout demo/mobile-voice-v0.1
 git pull
 cd backend
 python -m venv .venv
@@ -61,7 +92,7 @@ Invoke-RestMethod http://localhost:8000/api/intent `
 Terminal 1：
 
 ```bash
-git checkout demo/mobile-voice-v0
+git checkout demo/mobile-voice-v0.1
 git pull
 cd backend
 python3 -m venv .venv

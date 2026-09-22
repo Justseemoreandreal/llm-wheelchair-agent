@@ -20,6 +20,12 @@ export class SafetyRouter {
     });
   }
 
+  resetSafetyLatch(): void {
+    this.p0LatchedUntil = 0;
+    this.lastFingerprint = "";
+    this.lastAt = 0;
+  }
+
   recognizes(text: string): boolean {
     const normalized = text.replace(/\s+/g, "");
     return normalized.length > 0 && this.entries.some((entry) => normalized.includes(entry.word));

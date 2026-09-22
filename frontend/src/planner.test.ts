@@ -27,4 +27,29 @@ describe("PlannerClient", () => {
     expect(plan.mode).toBe("mock/fallback");
     expect(plan.intent).toBe("query_system_status");
   });
+
+  it("forwards the temporary demo token to FastAPI", async () => {
+    const fetcher = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      mode: "mock",
+      intent: "query_battery",
+      steps: [{ action: "query_battery" }],
+      requires_confirmation: false,
+      message: "mock"
+    }), { status: 200, headers: { "Content-Type": "application/json" } }));
+    const client = new PlannerClient(
+      "https://demo.example",
+      fetcher,
+      new FallbackPlanner(),
+      "run-token"
+    );
+
+    await client.plan("还有多少电", "session");
+
+    expect(fetcher).toHaveBeenCalledWith(
+      "https://demo.example/api/intent?access_token=run-token",
+      expect.objectContaining({
+        headers: expect.objectContaining({ "X-Demo-Token": "run-token" })
+      })
+    );
+  });
 });

@@ -48,6 +48,22 @@ export class MockHardwareAdapter implements HardwareAdapter {
       ack_latency_ms: Number((performance.now() - started).toFixed(3))
     };
   }
+
+  async reset(): Promise<ControlAck> {
+    const started = performance.now();
+    this.motorState = "IDLE";
+    this.brakeState = "RELEASED";
+    await Promise.resolve();
+    return {
+      event_type: "control_ack",
+      command_id: "demo-reset",
+      accepted: true,
+      controller_state: "MOTOR=IDLE;BRAKE=RELEASED",
+      timestamp_ms: Date.now(),
+      message: "Mock controller reset. No physical hardware was controlled.",
+      ack_latency_ms: Number((performance.now() - started).toFixed(3))
+    };
+  }
 }
 
 export class WebSocketHardwareAdapter implements HardwareAdapter {

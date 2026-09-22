@@ -66,16 +66,23 @@ export class PlannerClient implements Planner {
   constructor(
     private apiBase: string,
     private fetcher: FetchLike = globalThis.fetch.bind(globalThis),
-    private fallback: Planner = new FallbackPlanner()
+    private fallback: Planner = new FallbackPlanner(),
+    private accessToken = ""
   ) {}
 
   async plan(text: string, sessionId = "demo"): Promise<PlannerResult> {
     const abortController = new AbortController();
     const timeout = globalThis.setTimeout(() => abortController.abort(), 2000);
     try {
-      const response = await this.fetcher(`${this.apiBase}/api/intent`, {
+      const tokenQuery = this.accessToken
+        ? `?access_token=${encodeURIComponent(this.accessToken)}`
+        : "";
+      const response = await this.fetcher(`${this.apiBase}/api/intent${tokenQuery}`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(this.accessToken ? { "X-Demo-Token": this.accessToken } : {})
+        },
         body: JSON.stringify({
           session_id: sessionId,
           raw_text: text,

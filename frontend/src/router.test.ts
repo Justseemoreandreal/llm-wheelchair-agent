@@ -35,6 +35,13 @@ describe("SafetyRouter", () => {
     expect(router.route("前进", "test")).toBeNull();
   });
 
+  it("allows an explicit demo reset to clear the browser safety latch", () => {
+    const router = new SafetyRouter(entries);
+    router.route("停下", "test");
+    router.resetSafetyLatch();
+    expect(router.route("前进", "test")?.command.action).toBe("move_forward");
+  });
+
   it.each([
     "停", "停止", "停下", "停车", "站住", "别动", "刹住", "刹车", "急停",
     "快停", "立马停", "马上停", "立刻停下", "现在就停", "救命"

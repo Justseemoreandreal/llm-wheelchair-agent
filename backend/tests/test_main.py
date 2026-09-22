@@ -1,9 +1,37 @@
+from pathlib import Path
+
+import pytest
 from fastapi.testclient import TestClient
+from starlette.websockets import WebSocketDisconnect
 
-from app.main import app
+from app import main
 
 
-client = TestClient(app)
+client = TestClient(main.app)
+
+
+def control_command(
+    *,
+    command_id: str,
+    priority: str,
+    action: str,
+    raw_text: str,
+) -> dict[str, object]:
+    return {
+        "schema_version": "0.1",
+        "event_type": "control_command",
+        "command_id": command_id,
+        "session_id": "demo",
+        "source": "voice_local_rule",
+        "raw_text": raw_text,
+        "matched_word": raw_text,
+        "priority": priority,
+        "action": action,
+        "owner": "both",
+        "timestamp_ms": 1,
+        "latency_ms": 0.1,
+        "requires_ack": priority in {"P0", "P1"},
+    }
 
 
 def test_health_reports_mock_planner() -> None:
@@ -35,21 +63,12 @@ def test_intent_plans_fetch_cup() -> None:
 
 
 def test_websocket_p0_locks_simulated_controller_and_returns_ack() -> None:
-    command = {
-        "schema_version": "0.1",
-        "event_type": "control_command",
-        "command_id": "command-1",
-        "session_id": "demo",
-        "source": "voice_local_rule",
-        "raw_text": "停下",
-        "matched_word": "停下",
-        "priority": "P0",
-        "action": "immediate_stop",
-        "owner": "both",
-        "timestamp_ms": 1,
-        "latency_ms": 0.1,
-        "requires_ack": True,
-    }
+    command = control_command(
+        command_id="command-1",
+        priority="P0",
+        action="immediate_stop",
+        raw_text="停下",
+    )
     with client.websocket_connect("/ws/control") as websocket:
         websocket.send_json(command)
         ack = websocket.receive_json()
@@ -67,3 +86,110 @@ def test_control_gateway_rejects_invalid_schema() -> None:
         ack = websocket.receive_json()
     assert ack["event_type"] == "control_ack"
     assert ack["accepted"] is False
+
+
+def test_unified_server_serves_frontend_and_spa_fallback(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    dist = tmp_path / "dist"
+    (dist / "assets").mkdir(parents=True)
+    (dist / "index.html").write_text("<html>Demo V0.1</html>", encoding="utf-8")
+    (dist / "assets" / "app.js").write_text("console.log('demo')", encoding="utf-8")
+    monkeypatch.setattr(main, "FRONTEND_DIST", dist)
+
+    root = client.get("/")
+    spa = client.get("/phone-test")
+    asset = client.get("/assets/app.js")
+
+    assert root.status_code == 200
+    assert "Demo V0.1" in root.text
+    assert spa.status_code == 200
+    assert "Demo V0.1" in spa.text
+    assert asset.status_code == 200
+    assert asset.text == "console.log('demo')"
+
+
+def test_public_http_requires_launch_token(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("DEMO_ACCESS_TOKEN", "run-secret")
+    public_headers = {"cf-connecting-ip": "203.0.113.9"}
+
+    denied = client.get("/api/control/state", headers=public_headers)
+    allowed = client.get(
+        "/api/control/state?access_token=run-secret",
+        headers=public_headers,
+    )
+
+    assert denied.status_code == 401
+    assert allowed.status_code == 200
+
+
+def test_loopback_http_does_not_require_launch_token(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("DEMO_ACCESS_TOKEN", "run-secret")
+    loopback_client = TestClient(main.app, client=("127.0.0.1", 50000))
+    assert loopback_client.get("/api/control/state").status_code == 200
+
+
+def test_public_websocket_requires_launch_token(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("DEMO_ACCESS_TOKEN", "run-secret")
+    headers = {"cf-connecting-ip": "203.0.113.9"}
+    with pytest.raises(WebSocketDisconnect):
+        with client.websocket_connect("/ws/control", headers=headers):
+            pass
+
+    with client.websocket_connect(
+        "/ws/control?access_token=run-secret",
+        headers=headers,
+    ) as websocket:
+        websocket.send_json(
+            control_command(
+                command_id="token-command",
+                priority="P0",
+                action="immediate_stop",
+                raw_text="停下",
+            )
+        )
+        assert websocket.receive_json()["accepted"] is True
+
+
+def test_server_latch_rejects_motion_until_explicit_reset() -> None:
+    client.post("/api/control/reset")
+    with client.websocket_connect("/ws/control") as websocket:
+        websocket.send_json(
+            control_command(
+                command_id="latch-stop",
+                priority="P0",
+                action="immediate_stop",
+                raw_text="停下",
+            )
+        )
+        stop_ack = websocket.receive_json()
+        websocket.send_json(
+            control_command(
+                command_id="latch-forward",
+                priority="P2",
+                action="move_forward",
+                raw_text="前进",
+            )
+        )
+        rejected_ack = websocket.receive_json()
+
+    assert stop_ack["accepted"] is True
+    assert rejected_ack["accepted"] is False
+    assert rejected_ack["controller_state"] == "MOTOR=LOCKED;BRAKE=ENGAGED"
+    assert client.get("/api/control/state").json()["safety_latched"] is True
+
+    reset = client.post("/api/control/reset")
+    assert reset.status_code == 200
+    assert reset.json()["safety_latched"] is False
+    assert reset.json()["controller_state"] == "MOTOR=IDLE;BRAKE=RELEASED"
+
+    with client.websocket_connect("/ws/control") as websocket:
+        websocket.send_json(
+            control_command(
+                command_id="after-reset-forward",
+                priority="P2",
+                action="move_forward",
+                raw_text="前进",
+            )
+        )
+        accepted_ack = websocket.receive_json()
+    assert accepted_ack["accepted"] is True
+    assert accepted_ack["controller_state"] == "MOTOR=FORWARD;BRAKE=RELEASED"

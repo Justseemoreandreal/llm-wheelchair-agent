@@ -1,0 +1,35 @@
+{
+  "stage": "DemoV0.1",
+  "status": "PASS_WITH_USER_PHONE_TEST_REQUIRED",
+  "branch": "demo/mobile-voice-v0.1",
+  "implementation_commit": "b86ffbcaf0e2d710c542d57a34390e48ec6559f7",
+  "frontend_build": "PASS",
+  "frontend_tests": {
+    "test_files_passed": 9,
+    "passed": 46,
+    "failed": 0
+  },
+  "backend_tests": {
+    "passed": 12,
+    "failed": 0
+  },
+  "start_demo_validation": "PASS",
+  "start_phone_demo_validation": "PASS",
+  "stop_demo_validation": "PASS",
+  "tunnel_validation": "PASS",
+  "p0_latch_validation": "PASS",
+  "p0_backend_planner_offline": "PASS_BY_ARCHITECTURE_AND_REGRESSION_TEST",
+  "real_phone_status": "USER_TEST_REQUIRED",
+  "voice_test": "DESKTOP_API_PRESENT_REAL_MIC_NOT_TESTED",
+  "websocket_gateway": "PASS_SIMULATED_GATEWAY",
+  "llm_status": "MOCK_PLANNER_AND_FALLBACK_ONLY",
+  "hardware_status": "NOT_CONNECTED_SIMULATION_ONLY",
+  "critical_issues": [],
+  "high_issues": [
+    "V01-001 Real phone and microphone not physically validated"
+  ],
+  "next_stage_dependencies": [
+    "Real phone user acceptance",
+    "Controller selection of next route"
+  ]
+}

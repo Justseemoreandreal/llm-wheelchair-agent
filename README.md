@@ -1,6 +1,6 @@
-# 智能轮椅语音安全控制 Demo V0.1
+# 智能轮椅语音安全控制 Demo V0.2
 
-这是一个手机优先的模拟软件 Demo。语音、文字或测试按钮进入本地安全路由；P0 急停不等待 Backend Planner 或 LLM，直接生成标准控制 JSON。复杂自然语言使用 `MockPlanner`，不可用时自动切换到前端 `FallbackPlanner`。
+这是一个手机优先的模拟软件 Demo。默认语音链路是浏览器麦克风 → Web Audio → 16 kHz PCM → 本机 FastAPI `/ws/asr` → sherpa-onnx 中文流式识别；partial 转写立即进入本地 SafetyRouter。Web Speech API 仅为可选诊断对比。文字和测试按钮不依赖 ASR。P0 急停不等待 Planner 或 LLM，直接生成标准控制 JSON。复杂自然语言使用 `MockPlanner`，不可用时自动切换到前端 `FallbackPlanner`。
 
 > **安全声明：** 当前两个控制模式都是模拟控制器，不代表物理轮椅已经执行。软件语音停止不能替代独立物理急停。项目尚未包含 ESP32、STM32、CAN、UART 或 ROS 2 的真实底层协议。
 
@@ -9,8 +9,9 @@
 首次运行前只需安装 Node.js 20+ 和 Python 3.11+，安装时允许加入 PATH。
 
 1. 双击仓库根目录的 `START_DEMO.bat`。
-2. 等待自动准备环境并打开浏览器。
-3. 体验结束后回到启动窗口，按 Enter；服务会自动关闭。
+2. 首次启动会安装 Python 依赖并从官方 GitHub Release 下载约 87 MB 的中文 ASR 模型到 `.runtime/models/`；等待模型准备、自动打开浏览器。
+3. 点击“开始本地识别”并允许麦克风，或用“选择录音文件测试识别”选择本机 WAV、MP3、M4A 文件（格式能否解码取决于浏览器）。页面会显示 PCM、WebSocket、模型和 partial/final 诊断。
+4. 体验结束后回到启动窗口，按 Enter；服务会自动关闭。
 
 启动器优先使用 `http://127.0.0.1:8765/`；如果 Windows 将 8765 端口保留或禁止绑定，会自动选择一个可用端口，并在启动窗口中显示实际地址。浏览器仍会自动打开，无需手动找端口。
 
@@ -19,16 +20,16 @@
 1. 双击 `START_PHONE_DEMO.bat`。
 2. 首次运行会自动下载官方 `cloudflared`，请耐心等待。
 3. 启动窗口会显示临时 HTTPS 地址，并打开本地二维码图片。
-4. 手机扫码，允许麦克风权限，按页面“手机验收模式”逐项测试。
+4. 手机扫码，允许麦克风权限，按页面“手机验收模式”逐项测试。ASR 模型只在电脑上运行，手机通过 HTTPS/WSS 发送 PCM 音频。
 5. 用完回到电脑按 Enter；本地服务、临时 Tunnel 和本次 Token 会一起失效。
 
-此方式不需要 Cloudflare 账号。临时链接每次启动都会变化，仅用于短时演示。Codex 无法代替用户操作真实手机，因此发布状态为 **REAL PHONE: USER TEST REQUIRED**。
+此方式不需要 Cloudflare 账号。临时链接每次启动都会变化，仅用于短时演示。不要向他人转发含 Token 的 URL/二维码。Codex 无法代替用户操作真实手机，因此发布状态为 **REAL PHONE LIVE ASR: USER TEST REQUIRED**。
 
 如果启动窗口异常关闭，可双击 `STOP_DEMO.bat`。它只清理当前项目记录的进程，不会按进程名批量结束其他 Python、Node 或 cloudflared。
 
 ## 页面验收顺序
 
-1. 确认页面显示 `SIMULATION ONLY`，手机模式显示 `NETWORK GATEWAY`。
+1. 确认页面显示 `SIMULATION ONLY`，手机模式显示 `NETWORK GATEWAY`。诊断面板应显示 `LISTENING · LOCAL ASR`、输入音量、已发送帧和中文 partial/final。也可选择本地录音文件测试相同识别通路。
 2. 说或点击“停下”：应得到 `P0`、`MOTOR=LOCKED;BRAKE=ENGAGED`。
 3. 立即点击“前进”：浏览器短锁存会阻止命令；服务端锁存也会拒绝未复位的运动命令。
 4. 点击“复位模拟控制器”，再点“前进”：模拟运动才恢复。
@@ -44,11 +45,12 @@
 在仓库根目录打开 PowerShell：
 
 ```powershell
-git checkout demo/mobile-voice-v0.1
+git checkout demo/mobile-voice-v0.2-local-asr
 git pull
 cd backend
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe -m app.asr prepare-model
 .\.venv\Scripts\python.exe -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
@@ -92,12 +94,13 @@ Invoke-RestMethod http://localhost:8000/api/intent `
 Terminal 1：
 
 ```bash
-git checkout demo/mobile-voice-v0.1
+git checkout demo/mobile-voice-v0.2-local-asr
 git pull
 cd backend
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
+python -m app.asr prepare-model
 uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
@@ -117,9 +120,9 @@ npm run dev
 4. 手机打开 `http://192.168.1.25:5173/`。
 5. Windows 防火墙提示时，只允许可信的“专用网络”。
 
-Frontend 默认自动使用当前网页 hostname 连接 `http://<电脑IP>:8000` 和 `ws://<电脑IP>:8000/ws/control`，没有写死 `localhost`。
+Frontend 默认自动使用当前网页 hostname 连接 Backend、`/ws/control` 和 `/ws/asr`，没有写死 `localhost`。
 
-手机浏览器通常只允许在 HTTPS 安全上下文中使用麦克风。普通局域网 HTTP 页面仍可使用文字输入和所有快速测试按钮；语音体验请使用下面的 HTTPS 静态部署。电脑上的 `localhost` 通常可以直接使用麦克风。
+手机浏览器通常只允许在 HTTPS 安全上下文中使用麦克风。普通局域网 HTTP 页面仍可使用文字输入和测试按钮；语音体验请使用 `START_PHONE_DEMO.bat` 的 HTTPS Tunnel。电脑上的 `localhost` 通常可以直接使用麦克风。
 
 ## 页面上的两种控制模式
 
@@ -149,19 +152,20 @@ Copy-Item .env.example .env.local
 ```dotenv
 VITE_API_BASE_URL=https://api.example.com
 VITE_CONTROL_WS_URL=wss://api.example.com/ws/control
+VITE_ASR_WS_URL=wss://api.example.com/ws/asr
 ```
 
 修改后需要重启 `npm run dev` 或重新构建。
 
 ## HTTPS 静态部署（Netlify）
 
-仓库根目录已包含 `netlify.toml`。在 Netlify 导入该 GitHub 仓库和 `demo/mobile-voice-v0` 分支后，它会使用：
+仓库根目录已包含 `netlify.toml`。在 Netlify 导入该 GitHub 仓库和 `demo/mobile-voice-v0.2-local-asr` 分支后，它会使用：
 
 - Base directory：`frontend`
 - Build command：`npm run build`
 - Publish directory：`dist`
 
-即使没有部署 Backend，静态 HTTPS 页面也能用本地 P0 和明确标记的 `FallbackPlanner` 完整演示。若要启用 `NETWORK GATEWAY`，Backend 也必须提供 HTTPS/WSS 地址，并配置上面的两个环境变量；HTTPS 页面不能连接不安全的 HTTP/WS Backend。
+若没有 Backend，静态 HTTPS 页面仍可用文字/按钮演示本地 P0 和 `FallbackPlanner`，但 **V0.2 默认语音识别不可用**。语音识别和 `NETWORK GATEWAY` 都需要可访问的 HTTPS/WSS Backend；最简单的手机语音方式是 `START_PHONE_DEMO.bat`，无须部署账号。HTTPS 页面不能连接不安全的 HTTP/WS Backend。
 
 ## 自动测试与构建
 
@@ -180,12 +184,12 @@ cd backend
 .\.venv\Scripts\python.exe -m pytest -q
 ```
 
-测试覆盖 P0 路由、全部必需 P0 词、interim 去重、P0 锁存、P0 绕过 Planner、Mock Adapter、WebSocket Adapter、语音生命周期、Backend/Fallback Planner、`/health`、`/api/intent` 和 `/ws/control`。
+测试覆盖旧版 P0/控制/Planner 功能，以及 PCM framing、流式重采样、文件解码、ASR WebSocket 协议、会话生命周期、partial→P0、断线处理与官方测试 WAV 的真实 sherpa-onnx 解码。官方模型及录音只保存在被忽略的 `.runtime/models/`，不提交 Git。
 
 ## 核心数据流
 
 ```text
-interim transcript
+getUserMedia 或本地音频文件 → Web Audio → PCM16 16 kHz → /ws/asr → sherpa-onnx → partial transcript
   -> Local SafetyRouter
   -> canonical control_command
   -> MockHardwareAdapter 或 WebSocketHardwareAdapter
@@ -200,7 +204,7 @@ text
   -> Backend 不可用时 FallbackPlanner (mock/fallback)
 ```
 
-本页面的 `local_match_latency_ms` 只表示 ASR 已产生 interim transcript 后，到本地词库匹配并生成控制事件的耗时；它不包含浏览器 ASR 本身的延迟。
+本页面的 `local_match_latency_ms` 只表示 ASR 已产生 partial transcript 后，到本地词库匹配并生成控制事件的耗时；它不包含采集、网络传输或 ASR 解码延迟。Backend 完全离线时，语音 ASR 不可用，但文字/按钮在 `SIMULATION` 模式的 P0 仍可本地执行。
 
 ## 下一阶段接真实轮椅前需要
 

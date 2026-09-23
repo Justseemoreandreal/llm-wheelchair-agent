@@ -11,7 +11,7 @@ export interface PhoneTestState {
 
 export function buildPhoneTestSummary(state: PhoneTestState) {
   return {
-    stage: "DemoV0.1",
+    stage: "DemoV0.2",
     generated_at: new Date().toISOString(),
     simulation_only: true,
     real_phone_status: "USER TEST REQUIRED",
@@ -27,4 +27,3 @@ export function buildPhoneTestSummary(state: PhoneTestState) {
     }
   };
 }
-

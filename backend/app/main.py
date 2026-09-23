@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import ipaddress
+import asyncio
+import json
 import os
 import secrets
 import time
@@ -12,6 +14,8 @@ from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconn
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, Field, ValidationError
+
+from .asr import ASRService, ASRSession, parse_asr_control
 
 FRONTEND_DIST = Path(__file__).resolve().parents[2] / "frontend" / "dist"
 
@@ -192,6 +196,7 @@ class SimulatedController:
 
 
 controller = SimulatedController()
+asr_service = ASRService()
 
 
 @app.get("/health")
@@ -266,6 +271,11 @@ def reset_control() -> dict[str, Any]:
     return controller.reset()
 
 
+@app.get("/api/asr/status")
+def asr_status() -> dict[str, object]:
+    return asr_service.status()
+
+
 @app.websocket("/ws/control")
 async def control_gateway(websocket: WebSocket) -> None:
     client_host = websocket.headers.get("cf-connecting-ip") or (
@@ -295,6 +305,60 @@ async def control_gateway(websocket: WebSocket) -> None:
                 await websocket.send_json(ack.model_dump())
     except WebSocketDisconnect:
         return
+
+
+@app.websocket("/ws/asr")
+async def asr_gateway(websocket: WebSocket) -> None:
+    client_host = websocket.headers.get("cf-connecting-ip") or (
+        websocket.client.host if websocket.client else None
+    )
+    if _configured_token() and not _is_loopback(client_host):
+        supplied = websocket.query_params.get("access_token") or websocket.headers.get("x-demo-token")
+        if not _valid_token(supplied):
+            await websocket.close(code=4401, reason="Temporary demo access token required")
+            return
+    await websocket.accept()
+    session: ASRSession | None = None
+    try:
+        while True:
+            message = await websocket.receive()
+            if message.get("bytes") is not None:
+                if session is None:
+                    await websocket.send_json({"event_type": "asr_error", "code": "not_started", "message": "Send ASR start before PCM audio."})
+                    continue
+                try:
+                    event = await asyncio.to_thread(session.accept_pcm, message["bytes"])
+                    await websocket.send_json(event.as_dict())
+                except ValueError as error:
+                    await websocket.send_json({"event_type": "asr_error", "code": "invalid_pcm", "message": str(error)})
+                continue
+            if message.get("text") is None:
+                return
+            try:
+                control = parse_asr_control(json.loads(message["text"]))
+                if control.type == "start":
+                    session = ASRSession(await asyncio.to_thread(asr_service.create_recognizer))
+                    status = asr_service.status()
+                    await websocket.send_json({"event_type": "asr_status", "status": "ready", "sequence": 0, **status})
+                elif control.type == "stop" and session is not None:
+                    event = await asyncio.to_thread(session.stop)
+                    await websocket.send_json(event.as_dict())
+                elif control.type == "reset" and session is not None:
+                    status = await asyncio.to_thread(session.reset)
+                    await websocket.send_json({"event_type": status.event_type, "status": status.status, "sequence": status.sequence})
+                elif control.type == "config":
+                    await websocket.send_json({"event_type": "asr_status", "status": "configured", "sequence": session.sequence if session else 0})
+                else:
+                    await websocket.send_json({"event_type": "asr_error", "code": "not_started", "message": "Send ASR start before stop or reset."})
+            except ValueError as error:
+                await websocket.send_json({"event_type": "asr_error", "code": "invalid_control", "message": str(error)})
+            except Exception as error:
+                await websocket.send_json({"event_type": "asr_error", "code": "model_unavailable", "message": str(error)})
+    except WebSocketDisconnect:
+        return
+    finally:
+        if session is not None:
+            await session.close()
 
 
 @app.get("/{full_path:path}", include_in_schema=False)

@@ -19,7 +19,7 @@ $tunnelOutLog = Join-Path $logsDir "tunnel.out.log"
 $tunnelErrLog = Join-Path $logsDir "tunnel.err.log"
 
 New-Item -ItemType Directory -Force -Path $logsDir, $toolsCache | Out-Null
-Set-Content -LiteralPath $launcherLog -Value "$(Get-Date -Format o) Demo V0.1 launcher started. PhoneMode=$PhoneMode"
+Set-Content -LiteralPath $launcherLog -Value "$(Get-Date -Format o) Demo V0.2 launcher started. PhoneMode=$PhoneMode"
 
 function Write-Status {
     param([string]$Message, [ConsoleColor]$Color = [ConsoleColor]::Gray)
@@ -118,7 +118,7 @@ function Wait-ForTunnelUrl {
 
 try {
     Clear-Host
-    Write-Status "Demo V0.1 - simulation only" Cyan
+    Write-Status "Demo V0.2 - local Chinese ASR; simulation only" Cyan
     Write-Status "This does NOT control a physical wheelchair." Yellow
     Require-Command "python" "Install Python 3.11 or newer and enable 'Add Python to PATH'."
     Require-Command "node" "Install the current Node.js LTS release."
@@ -139,6 +139,13 @@ try {
         & $venvPython -m pip install -r (Join-Path $backendDir "requirements.txt")
         if ($LASTEXITCODE -ne 0) { throw "Backend dependency installation failed." }
         Set-Content -LiteralPath $requirementsStamp -Value $requirementsHash
+    }
+
+    Write-Status "Preparing pinned local Chinese ASR model (first run downloads approximately 87 MB)..." Cyan
+    Push-Location $backendDir
+    try { & $venvPython -m app.asr prepare-model } finally { Pop-Location }
+    if ($LASTEXITCODE -ne 0) {
+        throw "ASR model download/setup failed. Check internet access to GitHub releases, then rerun this launcher."
     }
 
     if (-not (Test-Path -LiteralPath (Join-Path $frontendDir "node_modules"))) {
@@ -261,5 +268,5 @@ catch {
 finally {
     & (Join-Path $PSScriptRoot "stop_demo.ps1") -Quiet
     Remove-Item Env:DEMO_ACCESS_TOKEN -ErrorAction SilentlyContinue
-    Write-Host "Demo V0.1 stopped cleanly." -ForegroundColor Green
+    Write-Host "Demo V0.2 stopped cleanly." -ForegroundColor Green
 }

@@ -3,11 +3,13 @@ export type ControlMode = "SIMULATION" | "NETWORK_GATEWAY";
 interface RuntimeEnvironment {
   VITE_API_BASE_URL?: string;
   VITE_CONTROL_WS_URL?: string;
+  VITE_ASR_WS_URL?: string;
 }
 
 export interface RuntimeConfig {
   apiBase: string;
   gatewayUrl: string;
+  asrUrl: string;
   accessToken: string;
   phoneTest: boolean;
   initialControlMode: ControlMode;
@@ -44,13 +46,17 @@ export function resolveRuntimeConfig(
     environment.VITE_CONTROL_WS_URL?.trim() || defaultGateway,
     accessToken
   );
+  const asrUrl = appendAccessToken(
+    environment.VITE_ASR_WS_URL?.trim() || defaultGateway.replace(/\/ws\/control$/, "/ws/asr"),
+    accessToken
+  );
 
   return {
     apiBase,
     gatewayUrl,
+    asrUrl,
     accessToken,
     phoneTest,
     initialControlMode: phoneTest ? "NETWORK_GATEWAY" : "SIMULATION"
   };
 }
-

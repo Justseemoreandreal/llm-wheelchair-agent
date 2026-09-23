@@ -14,7 +14,7 @@ describe("buildPhoneTestSummary", () => {
       fallback: true
     });
 
-    expect(summary.stage).toBe("DemoV0.1");
+    expect(summary.stage).toBe("DemoV0.2");
     expect(summary.simulation_only).toBe(true);
     expect(summary.checks.p0_stop).toBe(true);
     expect(summary.checks.fallback_planner).toBe(true);

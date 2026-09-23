@@ -50,4 +50,4 @@ if (Test-Path -LiteralPath $runtimeDir) {
     Remove-Item -LiteralPath (Join-Path $runtimeDir "server_port.txt") -Force -ErrorAction SilentlyContinue
 }
 
-if (-not $Quiet) { Write-Host "Project-owned Demo V0.1 processes are stopped." -ForegroundColor Green }
+if (-not $Quiet) { Write-Host "Project-owned Demo processes are stopped." -ForegroundColor Green }

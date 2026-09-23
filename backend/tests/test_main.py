@@ -193,3 +193,54 @@ def test_server_latch_rejects_motion_until_explicit_reset() -> None:
         accepted_ack = websocket.receive_json()
     assert accepted_ack["accepted"] is True
     assert accepted_ack["controller_state"] == "MOTOR=FORWARD;BRAKE=RELEASED"
+
+
+def test_asr_gateway_emits_status_partial_and_final_without_loading_real_model(monkeypatch: pytest.MonkeyPatch) -> None:
+    class FakeRecognizer:
+        def __init__(self) -> None:
+            self.texts = iter(["停下", "停下"])
+
+        def accept_pcm(self, pcm: bytes) -> None:
+            assert pcm == b"\x00\x00" * 160
+
+        def decode(self) -> str:
+            return next(self.texts, "")
+
+        def reset(self) -> None:
+            return None
+
+        def finish(self) -> None:
+            return None
+
+    class FakeASRService:
+        def create_recognizer(self) -> FakeRecognizer:
+            return FakeRecognizer()
+
+        def status(self) -> dict[str, str]:
+            return {"status": "ready", "model": "fake-test-model"}
+
+    monkeypatch.setattr(main, "asr_service", FakeASRService())
+    with client.websocket_connect("/ws/asr") as websocket:
+        websocket.send_json({"type": "start", "sample_rate": 16000, "channels": 1, "format": "pcm_s16le"})
+        ready = websocket.receive_json()
+        websocket.send_bytes(b"\x00\x00" * 160)
+        partial = websocket.receive_json()
+        websocket.send_json({"type": "stop"})
+        final = websocket.receive_json()
+
+    assert ready["event_type"] == "asr_status"
+    assert ready["status"] == "ready"
+    assert partial["event_type"] == "asr_partial"
+    assert partial["text"] == "停下"
+    assert final["event_type"] == "asr_final"
+    assert final["text"] == "停下"
+    assert final["is_session_end"] is True
+
+
+def test_asr_gateway_returns_error_for_bad_control_schema() -> None:
+    with client.websocket_connect("/ws/asr") as websocket:
+        websocket.send_json({"type": "start", "sample_rate": 8000, "channels": 1, "format": "pcm_s16le"})
+        error = websocket.receive_json()
+
+    assert error["event_type"] == "asr_error"
+    assert error["code"] == "invalid_control"
